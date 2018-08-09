@@ -5,12 +5,12 @@ A * x = F
 
 As it is shown in the main file all parameters shall be defined on unified memory
 
-```cpp
-float           *A;            cudaMallocManaged(&A, nnz*sizeof(float));
-unsigned int    *A_RowIndices; cudaMallocManaged(&A_RowIndices, (nRow+1)*sizeof(unsigned int));
-unsigned int    *A_ColIndices; cudaMallocManaged(&A_ColIndices, nnz*sizeof(unsigned int));
-float           *F;            cudaMallocManaged(&F, nRow*sizeof(float));
-float           *x;            cudaMallocManaged(&x, nRow*sizeof(float));
+```cpp  
+float        *A;            cudaMallocManaged(&A, nnz*sizeof(float));
+unsigned int *A_RowIndices; cudaMallocManaged(&A_RowIndices, (nRow+1)*sizeof(unsigned int));
+unsigned int *A_ColIndices; cudaMallocManaged(&A_ColIndices, nnz*sizeof(unsigned int));
+float        *F;            cudaMallocManaged(&F, nRow*sizeof(float));
+float        *x;            cudaMallocManaged(&x, nRow*sizeof(float));
 ```
 
 the sample matrix is:  
