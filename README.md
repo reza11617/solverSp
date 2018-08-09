@@ -15,7 +15,7 @@ float        *x;            cudaMallocManaged(&x, nRow*sizeof(float));
 
 the sample matrix is:  
 
-![equation](http://mathurl.com/y8rdkmb6.png)
+![equation](http://mathurl.com/ya8mukxh.png)
 
 the right hand side vector is:
 
@@ -23,3 +23,6 @@ the right hand side vector is:
 
 
 The class tries to solve the linear problem using [cholesky decomposition](https://docs.nvidia.com/cuda/cusolver/index.html#cusolver-lt-t-gt-csrlsvchol)
+
+## future work
+The future work of this class is to check if the matrix is not positive definite. If the matrix is not positive definite a function called fixMatrix() is responsible for making a matrix with both the lower triangle and upper triangle. Then another method such as QR decomposition will be used to solve the linear problem
