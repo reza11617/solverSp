@@ -18,13 +18,14 @@ private:
   int nnz; // number of non-zeros
   int N; // size of the matrix and vectors
   float tolerance; // tolerance to decide singularity
+  int reorder;
 public:
   SolverSp(float*, unsigned int*, unsigned int*, unsigned int, unsigned int, float*, float*);
   //SolverSp(float*, unsigned int*, unsigned int*, unsigned int, unsigned int,float*, float*, float);
   ~SolverSp();
 private:
-  int SolverSpChol();
-  void SolverSpQR();
+  int SolverSpChol(float*, int*, int*);
+  void SolverSpQR(float*, int*, int*);
   void fixMatrices();
 };
 #endif
