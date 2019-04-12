@@ -1,59 +1,117 @@
 #include <iostream>
+
+#include "Solver/Solver.h"
+
+/* Using updated (v2) interfaces to cublas */
 #include <cuda_runtime.h>
-#include <cusparse_v2.h>
-#include <cusolverSp.h>
+#include <cusparse.h>
+#include <cublas_v2.h>
 
-#include "SolverSp/SolverSp.h"
+// Utilities and system includes
+#include <helper_functions.h>  // helper for shared functions common to CUDA Samples
+#include <helper_cuda.h>       // helper function CUDA error checking and initialization
 
-int main()
+/* genTridiag: generate a random tridiagonal symmetric matrix */
+void genTridiag(int *rowPtr, int *colIndex, double *val, int N, int nz)
 {
-  // -- define the CSR matrix A * x = F
-  int nRow = 4; int nCol = 4; int N = 4; 
-  float        *A;            
-  unsigned int *A_RowIndices; 
-  unsigned int *A_ColIndices; 
-  float        *F;            
-  float        *x;
-  cudaMallocManaged(&F, nRow*sizeof(float));
-  F[0] = 100.0; F[1] = 200.0; F[2] = 400.0; F[3] = 500.0;
-  cudaMallocManaged(&x, nRow*sizeof(float));
-  cudaMallocManaged(&A_RowIndices, (nRow+1)*sizeof(unsigned int));
-  A_RowIndices[0] = 0;
-  // -- A positive definite matrix
-  /*
-  int nnz = 5;
-  cudaMallocManaged(&A, nnz*sizeof(float));
-  cudaMallocManaged(&A_ColIndices, nnz*sizeof(unsigned int));
-  A[0] = 34.0; A_ColIndices[0] = 0; A_RowIndices[1] = 1;
-  A[1] = 12.0; A_ColIndices[1] = 0; 
-  A[2] = 41.0; A_ColIndices[2] = 1; A_RowIndices[2] = 3;
-  A[3] =  1.0; A_ColIndices[3] = 2; A_RowIndices[3] = 4;
-  A[4] =  1.0; A_ColIndices[4] = 3; A_RowIndices[4] = 5;
-  */
-  // -- A symmetric matrix
-  unsigned int nnz = 7;
-  cudaMallocManaged(&A, nnz*sizeof(float));
-  cudaMallocManaged(&A_ColIndices, nnz*sizeof(unsigned int));
-  A[0] = 1.0; A_RowIndices[1] = 1; A_ColIndices[0] = 0;
-  A[1] = 4.0;                      A_ColIndices[1] = 0;
-  A[2] = 2.0; A_RowIndices[2] = 3; A_ColIndices[2] = 1;
-  A[3] = 5.0;                      A_ColIndices[3] = 0;
-  A[4] = 1.0; A_RowIndices[3] = 5; A_ColIndices[4] = 2;
-  A[5] = 6.0;                      A_ColIndices[5] = 2;
-  A[6] = 8.0; A_RowIndices[4] = 7; A_ColIndices[6] = 3;
+    rowPtr[0] = 0;
+    for (int i = 1; i <= N; i++)
+    {
+        rowPtr[i] = rowPtr[i-1] + i;
+        int counter = 0;
+        for (auto j = rowPtr[i-1]; j < rowPtr[i]; j++)
+        {
+            colIndex[j] = counter++;
+            val[j] = (double)rand()/RAND_MAX + 10.0d;
+        }
 
-  
-  // -- solver call
-  SolverSp(A, A_RowIndices, A_ColIndices, nnz, N, F, x);
-  // -- print result
-  printf("Showing the results...\n");
-  for (int i = 0; i < N; i++)   std::cout<< "x[" << i << "]= " << x[i] << std::endl;
-  for (int i = 0; i < N; i++)   std::cout<< "F[" << i << "]= " << F[i] << std::endl;
-  for (int i = 0; i < nnz; i++) std::cout<< "A[" << i << "]= " << A[i] << std::endl;
-  // -- Cuda free
-  cudaFree(A);
-  cudaFree(A_RowIndices);
-  cudaFree(A_ColIndices);
-  cudaFree(F);
-  cudaFree(x);
+    }
+}
+
+void PrintMatrix(int *rowPtr, int *colIndex, double *val, int N, int nz)
+{
+    for (auto i = 0; i < N; i++)
+    {
+        std::cout<<rowPtr[i];
+        for (auto j = rowPtr[i]; j < rowPtr[i+1]; j++)
+        {
+            std::cout<<"\t"<<colIndex[j]<<"\t"<<val[j]<<"\n";
+        }
+    }
+}
+
+int main(int argc, char **argv)
+{
+     // This will pick the best possible CUDA capable device
+    cudaDeviceProp deviceProp;
+    int devID = findCudaDevice(argc, (const char **)argv);
+
+    if (devID < 0)
+    {
+        std::cout<<"exiting...\n";
+        exit(EXIT_SUCCESS);
+    }
+    cudaGetDeviceProperties(&deviceProp, devID);
+    // Statistics about the GPU device
+    std::cout<<"> GPU device has " << deviceProp.multiProcessorCount << " Multi-Processors, SM "<< deviceProp.major <<"."<< deviceProp.minor <<" compute capabilities\n\n";
+
+    int M = 0, N = 300, nz ;
+    int *colIndex, *rowPtr;
+    int k = 0;
+    double *val, *x;
+    double *rhs;
+
+    cudaMallocManaged(&colIndex, nz*sizeof(int));
+    cudaMallocManaged(&rowPtr, (N+1)*sizeof(int));
+    cudaMallocManaged(&val, nz*sizeof(double));
+    cudaMallocManaged(&x, N*sizeof(double));
+    cudaMallocManaged(&rhs, N*sizeof(double));
+
+    genTridiag(rowPtr, colIndex, val, N, nz);
+
+
+    for (int i = 0; i < N; i++)
+    {
+        rhs[i] = 1.0;
+        x[i] = 0.0;
+    }
+    Solver(N, nz, val, rowPtr, colIndex, x, rhs);
+    double rsum, diff, err = 0.0;
+
+    for (int i = N-1; i < N; i++)
+    {
+        rsum = 0.0;
+
+        for (int j = rowPtr[i]; j < rowPtr[i+1]; j++)
+        {
+            rsum += val[j]*x[colIndex[j]];
+        }
+
+        diff = fabs(rsum - rhs[i]);
+
+        if (diff > err)
+        {
+            err = diff;
+        }
+    }
+    
+/*     PrintMatrix(rowPtr, colIndex, val, N, nz);
+    for (int i = 0; i<N; i++)
+        std::cout<<x[i]<<"\n"; 
+
+   */
+
+    cudaFree(colIndex);
+    cudaFree(rowPtr);
+    cudaFree(val);
+    cudaFree(x);
+    cudaFree(rhs);
+
+
+
+    std::cout<<"Test Summary:  Error amount = "<< err <<"\n";
+    //exit((k <= max_iter) ? 0 : 1);
+    
+
+
 }

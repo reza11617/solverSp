@@ -1,0 +1,61 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <assert.h>
+
+#include <cuda_runtime.h>
+#include <cusparse_v2.h>
+#include <cusolverSp.h>
+
+#include "Utilities.cuh"
+
+/********/
+/* MAIN */
+/********/
+int main()
+{
+  cusparseHandle_t handle; cusparseCreate(&handle);
+  // define the CSR matrix
+  int nRow = 4; int nCol = 4; int N = 4;
+  int nnz = 5;
+  double* A; cudaMallocManaged(&A, nnz*sizeof(double));
+  int *A_RowIndices; cudaMallocManaged(&A_RowIndices, (nRow+1)*sizeof(int)); 
+  int *A_ColIndices; cudaMallocManaged(&A_ColIndices, nnz*sizeof(int));
+  
+  A_RowIndices[0] = 0;
+  A_RowIndices[1] = 1;
+  A_RowIndices[2] = 3;
+  A_RowIndices[3] = 4;
+  A_RowIndices[4] = 5;
+  
+  A[0] = 34.0; A_ColIndices[0] = 0;
+  A[1] = 12.0; A_ColIndices[1] = 0;
+  A[2] = 41.0; A_ColIndices[2] = 1;
+  A[3] =  1.0; A_ColIndices[3] = 2;
+  A[4] =  1.0; A_ColIndices[4] = 3;
+  
+
+  double *F; cudaMallocManaged(&F, nRow*sizeof(double));
+  F[0] = 100.0; F[1] = 200.0; F[2] = 400.0; F[3] = 500.0;
+
+  double *x; cudaMallocManaged(&x, nRow*sizeof(double));
+
+  // --- Descriptor for sparse matrix A
+  cusparseMatDescr_t descrA;      (cusparseCreateMatDescr(&descrA));
+  cusparseSetMatType      (descrA, CUSPARSE_MATRIX_TYPE_GENERAL);
+  cusparseSetMatIndexBase (descrA, CUSPARSE_INDEX_BASE_ZERO);
+  
+  // --- CUDA solver initialization
+  cusolverSpHandle_t solver_handle;
+  cusolverSpCreate(&solver_handle);
+
+  int reorder = 0;
+  int singularity;
+  cusolverSpDcsrlsvcholHost(solver_handle, N, nnz, descrA,
+			    A, A_RowIndices, A_ColIndices,
+			    F, 0.000001, reorder, x, &singularity);
+  printf("Showing the results...\n");
+  printf("Singularity is: %d\n", singularity);
+  for (int i = 0; i < N; i++)   printf("%f\n", x[i]);
+  for (int i = 0; i < N; i++)   printf("%f\n", F[i]);
+  for (int i = 0; i < nnz; i++) printf("%f\n", A[i]);
+}
