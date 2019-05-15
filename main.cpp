@@ -12,20 +12,80 @@
 #include <helper_cuda.h>       // helper function CUDA error checking and initialization
 
 /* genTridiag: generate a random tridiagonal symmetric matrix */
-void genTridiag(int *rowPtr, int *colIndex, double *val, int N, int nz)
+/* genLaplace: Generate a matrix representing a second order, regular, Laplacian operator on a 2d domain in Compressed Sparse Row format*/
+void genLaplace(int *row_ptr, int *col_ind, double *val, int M, int N, int nz, double *rhs)
 {
-    rowPtr[0] = 0;
-    for (int i = 1; i <= N; i++)
+    assert(M==N);
+    int n=(int)sqrt((double)N);
+    assert(n*n==N);
+    printf("laplace dimension = %d\n", n);
+    int idx = 0;
+
+    // loop over degrees of freedom
+    for (int i=0; i<N; i++)
     {
-        rowPtr[i] = rowPtr[i-1] + i;
-        int counter = 0;
-        for (auto j = rowPtr[i-1]; j < rowPtr[i]; j++)
+        int ix = i%n;
+        int iy = i/n;
+
+        row_ptr[i] = idx;
+
+        // up
+        if (iy > 0)
         {
-            colIndex[j] = counter++;
-            val[j] = (double)rand()/RAND_MAX + 10.0d;
+            val[idx] = 1.0;
+            col_ind[idx] = i-n;
+            idx++;
+        }
+        else
+        {
+            rhs[i] -= 1.0;
+        }
+
+        // left
+        if (ix > 0)
+        {
+            val[idx] = 1.0;
+            col_ind[idx] = i-1;
+            idx++;
+        }
+        else
+        {
+            rhs[i] -= 0.0;
+        }
+
+        // center
+        val[idx] = -4.0;
+        col_ind[idx]=i;
+        idx++;
+
+        //right
+        if (ix  < n-1)
+        {
+            val[idx] = 1.0;
+            col_ind[idx] = i+1;
+            idx++;
+        }
+        else
+        {
+            rhs[i] -= 0.0;
+        }
+
+        //down
+        if (iy  < n-1)
+        {
+            val[idx] = 1.0;
+            col_ind[idx] = i+n;
+            idx++;
+        }
+        else
+        {
+            rhs[i] -= 0.0;
         }
 
     }
+
+    row_ptr[N] = idx;
+
 }
 
 void PrintMatrix(int *rowPtr, int *colIndex, double *val, int N, int nz)
@@ -55,11 +115,13 @@ int main(int argc, char **argv)
     // Statistics about the GPU device
     std::cout<<"> GPU device has " << deviceProp.multiProcessorCount << " Multi-Processors, SM "<< deviceProp.major <<"."<< deviceProp.minor <<" compute capabilities\n\n";
 
-    int M = 0, N = 300, nz ;
+    int M, N, nz ;
     int *colIndex, *rowPtr;
     int k = 0;
     double *val, *x;
     double *rhs;
+    M = N = 16384;
+    nz = 5*N-4*(int)sqrt((double)N);
 
     cudaMallocManaged(&colIndex, nz*sizeof(int));
     cudaMallocManaged(&rowPtr, (N+1)*sizeof(int));
@@ -67,18 +129,17 @@ int main(int argc, char **argv)
     cudaMallocManaged(&x, N*sizeof(double));
     cudaMallocManaged(&rhs, N*sizeof(double));
 
-    genTridiag(rowPtr, colIndex, val, N, nz);
+    genLaplace(rowPtr, colIndex,val, M, N, nz, rhs);
 
 
     for (int i = 0; i < N; i++)
     {
-        rhs[i] = 1.0;
         x[i] = 0.0;
     }
-    Solver(N, nz, val, rowPtr, colIndex, x, rhs);
+    Solver(N, nz, val, rowPtr, colIndex, x, rhs); 
     double rsum, diff, err = 0.0;
 
-    for (int i = N-1; i < N; i++)
+    for (int i = 0; i < N; i++)
     {
         rsum = 0.0;
 
@@ -95,11 +156,10 @@ int main(int argc, char **argv)
         }
     }
     
-/*     PrintMatrix(rowPtr, colIndex, val, N, nz);
-    for (int i = 0; i<N; i++)
-        std::cout<<x[i]<<"\n"; 
 
-   */
+    //PrintMatrix(rowPtr, colIndex, val, N, nz);
+    //for (int i = 0; i<N; i++)
+    //    std::cout<<x[i]<<"\n"; 
 
     cudaFree(colIndex);
     cudaFree(rowPtr);

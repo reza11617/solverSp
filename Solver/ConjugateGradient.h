@@ -11,7 +11,7 @@ class ConjugateGradient {
 private:
 
 public:
-  ConjugateGradient(int N, int nz, double * val, int *rowPtr, int *colIndex, double * x, double* rhs);
+  ConjugateGradient(int N, int nz, double * val, int *rowPtr, int *colIndex, double * x, double* rhs, const double tol);
   ~ConjugateGradient();
 private:
 

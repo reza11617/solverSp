@@ -249,7 +249,7 @@ GENCODE_FLAGS += -gencode arch=compute_$(HIGHEST_SM),code=compute_$(HIGHEST_SM)
 endif
 endif
 
-LIBRARIES += -lcublas_static -lcusparse_static -lculibos
+LIBRARIES += -lcublas_static -lcusparse_static -lculibos -lcusolver
 
 ################################################################################
 
@@ -265,7 +265,7 @@ build: solverCuda
 #	@echo "Sample is ready - all dependencies have been met"
 #endif
 
-solverCuda: main.o Solver/Solver.o Solver/ConjugateGradient.o
+solverCuda: main.o Solver/Solver.o Solver/ConjugateGradient.o Solver/Cholesky.o Solver/ConjugateGradientPrecond.cpp
 	 $(NVCC) $(INCLUDES) $(ALL_LDFLAGS) $(GENCODE_FLAGS) -o $@ $+ $(LIBRARIES)
 
 main.o:main.cpp
@@ -275,6 +275,12 @@ Solver/Solver.o:Solver/Solver.cpp
 	 $(NVCC) $(INCLUDES) $(ALL_CCFLAGS) $(GENCODE_FLAGS) -o $@ -c $<
 
 Solver/ConjugateGradient.o:Solver/ConjugateGradient.cpp
+	 $(NVCC) $(INCLUDES) $(ALL_CCFLAGS) $(GENCODE_FLAGS) -o $@ -c $<
+
+Solver/ConjugateGradientPrecond.o:Solver/ConjugateGradientPrecond.cpp
+	 $(NVCC) $(INCLUDES) $(ALL_CCFLAGS) $(GENCODE_FLAGS) -o $@ -c $<
+
+Solver/Cholesky.o:Solver/Cholesky.cpp
 	 $(NVCC) $(INCLUDES) $(ALL_CCFLAGS) $(GENCODE_FLAGS) -o $@ -c $<
 
 #mmio.c.o:mmio.c
