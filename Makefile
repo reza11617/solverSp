@@ -265,7 +265,7 @@ build: solverCuda
 #	@echo "Sample is ready - all dependencies have been met"
 #endif
 
-solverCuda: main.o Solver/Solver.o Solver/ConjugateGradient.o Solver/Cholesky.o Solver/ConjugateGradientPrecond.cpp
+solverCuda: main.o Solver/Solver.o Solver/ConjugateGradient.o Solver/Cholesky.o Solver/ConjugateGradientPrecond.o
 	 $(NVCC) $(INCLUDES) $(ALL_LDFLAGS) $(GENCODE_FLAGS) -o $@ $+ $(LIBRARIES)
 
 main.o:main.cpp
