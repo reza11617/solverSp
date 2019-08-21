@@ -6,20 +6,30 @@ Solver::Solver(int N, int nz, double * val, int *rowPtr, int *colIndex, double *
     cudaMallocManaged(&rhs_dummy, N*sizeof(double));
     cudaMemcpy(rhs_dummy, rhs, N*sizeof(double),cudaMemcpyDeviceToDevice);
 
-    std::cout<<"Starting to solve ...\n";
-    std::cout<<"Cholesky Decomposition Selected\n";
+/*
+    INFO("Starting to solve ...");
+    INFO("Cholesky Decomposition Selected");
     cudaMemset(x, 0, N*sizeof(double));
-    Cholesky(N, nz, val, rowPtr, colIndex, x, rhs_dummy, tol);
-    std::cout<<"Conjugate Gradient Selected\n";
-    cudaMemset(x, 0, N*sizeof(double));
-    cudaMemcpy(rhs_dummy, rhs, N*sizeof(double),cudaMemcpyDeviceToDevice);
-    ConjugateGradient(N, nz, val, rowPtr, colIndex, x, rhs_dummy, tol);
-    std::cout<<"Conjugate Gradient Precondition Selected\n";
+    //GPU::Cholesky(N, nz, val, rowPtr, colIndex, x, rhs_dummy, tol);
+    INFO("Conjugate Gradient Selected (GPU)");
     cudaMemset(x, 0, N*sizeof(double));
     cudaMemcpy(rhs_dummy, rhs, N*sizeof(double),cudaMemcpyDeviceToDevice);
-    ConjugateGradientPrecond(N, nz, val, rowPtr, colIndex, x, rhs_dummy, tol);
+    //GPU::ConjugateGradient(N, nz, val, rowPtr, colIndex, x, rhs_dummy, tol);
+    INFO("Conjugate Gradient Selected (SingleCPU)");
+    cudaMemset(x, 0, N*sizeof(double));
+    cudaMemcpy(rhs_dummy, rhs, N*sizeof(double),cudaMemcpyDeviceToDevice);
+    //SingleCPU::ConjugateGradient(N, nz, val, rowPtr, colIndex, x, rhs_dummy, tol);
+    INFO("Conjugate Gradient Precondition Selected (LU) (GPU)");
+    cudaMemset(x, 0, N*sizeof(double));
+    cudaMemcpy(rhs_dummy, rhs, N*sizeof(double),cudaMemcpyDeviceToDevice);
+    GPU::ConjugateGradientPrecondLU(N, nz, val, rowPtr, colIndex, x, rhs_dummy, tol);
     cudaFree(rhs_dummy);
-        
+*/
+    INFO("Conjugate Gradient Precondition Selected (CHOL) (GPU)");
+    cudaMemset(x, 0, N*sizeof(double));
+    //cudaMemcpy(rhs_dummy, rhs, N*sizeof(double),cudaMemcpyDeviceToDevice);
+    GPU::ConjugateGradientPrecondChol(N, nz, val, rowPtr, colIndex, x, rhs_dummy, tol);
+    cudaFree(rhs_dummy);
 }
 
 Solver::~Solver() {

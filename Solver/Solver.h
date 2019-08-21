@@ -4,6 +4,8 @@
 #include "ConjugateGradient.h"
 #include "ConjugateGradientPrecond.h"
 #include "Cholesky.h"
+#include "Log/Log.h"
+
 
 class Solver {
 protected:
@@ -12,5 +14,4 @@ public:
   Solver(int N, int nz, double * val, int *rowPtr, int *colIndex, double * x, double* rhs);
   ~Solver();
 private:
-
 };

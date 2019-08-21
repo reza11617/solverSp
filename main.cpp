@@ -98,6 +98,7 @@ void PrintMatrix(int *rowPtr, int *colIndex, double *val, int N, int nz)
             std::cout<<"\t"<<colIndex[j]<<"\t"<<val[j]<<"\n";
         }
     }
+    std::cout<<rowPtr[N]<<"\n";
 }
 
 int main(int argc, char **argv)
@@ -114,13 +115,12 @@ int main(int argc, char **argv)
     cudaGetDeviceProperties(&deviceProp, devID);
     // Statistics about the GPU device
     std::cout<<"> GPU device has " << deviceProp.multiProcessorCount << " Multi-Processors, SM "<< deviceProp.major <<"."<< deviceProp.minor <<" compute capabilities\n\n";
-
     int M, N, nz ;
     int *colIndex, *rowPtr;
     int k = 0;
     double *val, *x;
     double *rhs;
-    M = N = 16384;
+    M = N = 4;
     nz = 5*N-4*(int)sqrt((double)N);
 
     cudaMallocManaged(&colIndex, nz*sizeof(int));
@@ -131,11 +131,11 @@ int main(int argc, char **argv)
 
     genLaplace(rowPtr, colIndex,val, M, N, nz, rhs);
 
+    PrintMatrix(rowPtr, colIndex, val, N, nz);
 
-    for (int i = 0; i < N; i++)
-    {
-        x[i] = 0.0;
-    }
+    // for (int i = 0; i<N; i++)
+    //     std::cout<<rhs[i]<<"\n"; 
+
     Solver(N, nz, val, rowPtr, colIndex, x, rhs); 
     double rsum, diff, err = 0.0;
 
@@ -157,9 +157,8 @@ int main(int argc, char **argv)
     }
     
 
-    //PrintMatrix(rowPtr, colIndex, val, N, nz);
-    //for (int i = 0; i<N; i++)
-    //    std::cout<<x[i]<<"\n"; 
+     for (int i = 0; i<N; i++)
+         std::cout<<x[i]<<"\n"; 
 
     cudaFree(colIndex);
     cudaFree(rowPtr);
@@ -170,8 +169,4 @@ int main(int argc, char **argv)
 
 
     std::cout<<"Test Summary:  Error amount = "<< err <<"\n";
-    //exit((k <= max_iter) ? 0 : 1);
-    
-
-
 }

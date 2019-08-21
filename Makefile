@@ -225,8 +225,8 @@ ALL_LDFLAGS += $(addprefix -Xlinker ,$(LDFLAGS))
 ALL_LDFLAGS += $(addprefix -Xlinker ,$(EXTRA_LDFLAGS))
 
 # Common includes and paths for CUDA
-INCLUDES  := -I./common/inc
-LIBRARIES :=
+INCLUDES  := -I./common/inc -I./ -I./includes/openblas
+LIBRARIES := -L./lib
 
 ################################################################################
 
@@ -249,7 +249,7 @@ GENCODE_FLAGS += -gencode arch=compute_$(HIGHEST_SM),code=compute_$(HIGHEST_SM)
 endif
 endif
 
-LIBRARIES += -lcublas_static -lcusparse_static -lculibos -lcusolver
+LIBRARIES += -lcublas_static -lcusparse_static -lculibos -lcusolver -lopenblas
 
 ################################################################################
 
@@ -265,8 +265,11 @@ build: solverCuda
 #	@echo "Sample is ready - all dependencies have been met"
 #endif
 
-solverCuda: main.o Solver/Solver.o Solver/ConjugateGradient.o Solver/Cholesky.o Solver/ConjugateGradientPrecond.o
+solverCuda: main.o Solver/Solver.o Solver/ConjugateGradient.o Solver/Cholesky.o Solver/ConjugateGradientPrecond.o Log/Log.o
 	 $(NVCC) $(INCLUDES) $(ALL_LDFLAGS) $(GENCODE_FLAGS) -o $@ $+ $(LIBRARIES)
+
+Log/Log.o:Log/Log.cpp
+	 $(NVCC) $(INCLUDES) $(ALL_CCFLAGS) $(GENCODE_FLAGS) -o $@ -c $<
 
 main.o:main.cpp
 	 $(NVCC) $(INCLUDES) $(ALL_CCFLAGS) $(GENCODE_FLAGS) -o $@ -c $<
